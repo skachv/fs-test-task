@@ -1,0 +1,98 @@
+version: '3.4'
+
+services:
+  task1.api:
+    image: ${DOCKER_REGISTRY-}task1api
+    build:
+      context: .
+      dockerfile: Task1.Api/Dockerfile
+    environment:
+      - DB_CONNECTION=Host=postgres;Database=testdb;Username=postgres;Password=postgres
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 1G
+    healthcheck:
+      test: [ "CMD-SHELL", "exit 0" ] # Always healthy
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      database:
+        condition: service_healthy
+
+  task2.api:
+    image: ${DOCKER_REGISTRY-}task2api
+    build:
+      context: .
+      dockerfile: Task2.Api/Dockerfile
+    environment:
+      - DB_CONNECTION=Host=postgres;Database=testdb;Username=postgres;Password=postgres
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 500M
+    depends_on:
+      task1.api:
+        condition: service_healthy
+
+  task3.api:
+    image: ${DOCKER_REGISTRY-}task3api
+    build:
+      context: .
+      dockerfile: Task3.Api/Dockerfile
+    environment:
+      - DB_CONNECTION=Host=postgres;Database=testdb;Username=postgres;Password=postgres
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 500M
+    depends_on:
+      task1.api:
+        condition: service_healthy
+
+  database:
+    image: postgres:16.3-alpine3.20
+    container_name: "postgres"
+    volumes:
+      - testvolume:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: "testdb"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2'
+    #       memory: 2G
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d testdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "pgadmin4@pgadmin.org"
+      PGADMIN_DEFAULT_PASSWORD: "postgres"
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    volumes:
+      - pgadminvolume:/var/lib/pgadmin
+    ports:
+      - "5050:80"
+    restart: unless-stopped
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '0.5'
+    #       memory: 1G
+volumes:
+  testvolume:
+  pgadminvolume:
